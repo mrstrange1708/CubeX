@@ -10,7 +10,7 @@ const Navbar = () => {
                 <Link href="/" className="flex items-center gap-3 group">
                     <div className="relative w-8 h-8 overflow-hidden rounded-lg">
                         <Image
-                            src="/logo.png"
+                            src="../../icon.svg"
                             alt="CubeX Logo"
                             fill
                             className="object-cover group-hover:scale-110 transition-transform duration-300"
@@ -27,7 +27,7 @@ const Navbar = () => {
                 </div>
 
                 <button className="flex items-center gap-2 px-5 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-wider rounded-full hover:bg-neutral-200 transition-all hover:scale-105 active:scale-95">
-                    Start <MoveRight size={14} />
+                    <Link href="/auth/signin">Start</Link> <MoveRight size={14} />
                 </button>
             </nav>
         </div>

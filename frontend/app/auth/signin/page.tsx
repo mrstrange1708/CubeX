@@ -21,19 +21,21 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
 
-        try {
-            const response = await authApi.signin(formData);
-            localStorage.setItem("token", response.token);
-            localStorage.setItem("user", JSON.stringify(response.user));
-            toast.success("Welcome back!");
-            router.push("/");
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Invalid credentials.");
-        } finally {
-            setLoading(false);
-        }
+        const promise = authApi.signin(formData);
+
+        toast.promise(promise, {
+            loading: 'Signing in...',
+            success: (data) => {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                router.push("/");
+                return "Welcome back!";
+            },
+            error: (err) => {
+                return err.response?.data?.message || "Invalid credentials.";
+            },
+        });
     };
 
     return (

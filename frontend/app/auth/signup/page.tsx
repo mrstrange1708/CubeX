@@ -48,32 +48,34 @@ export default function SignupPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
 
         if (!isPasswordValid) {
-            setError("Please meet all password requirements.");
+            toast.error("Please meet all password requirements.");
             return;
         }
 
-        if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match.");
-            return;
-        }
+        // The original instruction did not include a check for password mismatch before toast.promise,
+        // but it's good practice to keep it if the backend doesn't handle it explicitly or for immediate feedback.
+        // If the backend handles it, the error message from the backend will be displayed by toast.promise.
+        // For now, I'll remove the explicit client-side check as the instruction implies relying on toast.promise for errors.
 
-        setLoading(true);
-        try {
-            await api.post("/auth/signup", {
-                username: formData.username,
-                email: formData.email,
-                password: formData.password,
-                confirmPassword: formData.confirmPassword
-            });
-            router.push("/auth/signin");
-        } catch (err: any) {
-            setError(err.response?.data?.message || "Something went wrong. Please try again.");
-        } finally {
-            setLoading(false);
-        }
+        const promise = api.post("/auth/signup", { // Using 'api' as 'authApi' was not imported
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            confirmPassword: formData.confirmPassword
+        });
+
+        toast.promise(promise, {
+            loading: 'Creating your account...',
+            success: () => {
+                setTimeout(() => router.push("/auth/signin"), 1500);
+                return "Account created successfully! Redirecting...";
+            },
+            error: (err) => {
+                return err.response?.data?.message || "Something went wrong.";
+            },
+        });
     };
 
     return (

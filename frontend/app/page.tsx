@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
 import Navbar from "@/components/Navbar";
-import { Box, Timer, BookText, Trophy, ArrowRight, Sparkles } from "lucide-react";
+import { Box, Timer, BookText, Trophy, ArrowRight, Sparkles, Link } from "lucide-react";
 import Preloader from "@/components/Preloader";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,7 +39,7 @@ export default function LandingPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
           </span>
-          LOGIC-FIRST SOLVER
+          RUBIK'S SOLVER
         </div>
 
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent italic">
@@ -50,10 +52,11 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col md:flex-row gap-4">
-          <button className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2">
-            Launch Solver <ArrowRight size={20} />
+          <button onClick={() => router.push("/solver")} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2">
+            Launch Solver
+            <ArrowRight size={20} />
           </button>
-          <button className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-xl transition-all">
+          <button onClick={() => router.push("/timer")} className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-xl transition-all">
             Join Challenge
           </button>
         </div>
