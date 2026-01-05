@@ -55,12 +55,9 @@ export default function SignupPage() {
             return;
         }
 
-        // The original instruction did not include a check for password mismatch before toast.promise,
-        // but it's good practice to keep it if the backend doesn't handle it explicitly or for immediate feedback.
-        // If the backend handles it, the error message from the backend will be displayed by toast.promise.
-        // For now, I'll remove the explicit client-side check as the instruction implies relying on toast.promise for errors.
 
-        const promise = api.post("/auth/signup", { // Using 'api' as 'authApi' was not imported
+
+        const promise = api.post("/auth/signup", { 
             username: formData.username,
             email: formData.email,
             password: formData.password,
