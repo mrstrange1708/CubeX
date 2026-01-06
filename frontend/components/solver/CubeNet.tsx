@@ -2,12 +2,6 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { CubeColor } from './ColorPicker';
 
-// Type for the entire cube state: 6 faces * 9 stickers = 54 blocks
-// We can index them by face and index 0-8, or a flat array.
-// For the net, structured by Face is easier.
-// Faces: U (Up), R (Right), F (Front), D (Down), L (Left), B (Back)
-// Standard color scheme request:
-// U: White, D: Yellow, F: Green, B: Blue, R: Red, L: Orange
 
 export type FaceKey = 'U' | 'R' | 'F' | 'D' | 'L' | 'B';
 
@@ -50,7 +44,7 @@ const FaceGrid = ({
                     aria-label={`Face ${face} sticker ${idx}`}
                 />
             ))}
-            {/* Center label for debugging/clarity - optional */}
+
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
                 <span className="text-xs font-bold text-black/50 drop-shadow-md uppercase">{face}</span>
             </div>
@@ -59,10 +53,6 @@ const FaceGrid = ({
 };
 
 export function CubeNet({ cubeState, onStickerClick }: CubeNetProps) {
-    // Standard 2D Net Layout (Cross)
-    //       U
-    //     L F R B
-    //       D
 
     return (
         <div className="flex flex-col items-center gap-2 p-4 animate-in fade-in zoom-in duration-500">
