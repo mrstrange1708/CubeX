@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { CubeProvider } from "@/context/CubeContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,23 +35,20 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased selection:bg-blue-500/30`}
       >
-        {children}
-        <Toaster
-          richColors
+        <CubeProvider>
+          {children}
+        </CubeProvider>
+        <ToastContainer
           position="top-right"
-          toastOptions={{
-            style: {
-              background: '#0ea5e9', // Blue-500
-              borderColor: '#0284c7', // Blue-600
-              color: 'white',
-            },
-            classNames: {
-              error: 'bg-red-500 border-red-600 text-white',
-              success: 'bg-green-500 border-green-600 text-white',
-              warning: 'bg-yellow-500 border-yellow-600 text-white',
-              info: 'bg-blue-500 border-blue-600 text-white',
-            },
-          }}
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
         />
       </body>
     </html>

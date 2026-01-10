@@ -13,10 +13,13 @@ const solveCube = (req, res) => {
         }
 
         const result = solverService.solve(stickers);
-        res.json(result);
+        res.json({ ...result, valid: true });
     } catch (error) {
         console.error("Solver error:", error);
-        res.status(500).json({ valid: false, error: "Internal server error" });
+        res.status(400).json({
+            valid: false,
+            error: error.message || "Failed to solve cube"
+        });
     }
 };
 

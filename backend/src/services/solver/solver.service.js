@@ -11,37 +11,44 @@ class SolverService {
             startCube = this.parseStickersToCube(input);
         }
 
+        // Check if cube is already solved
+        if (this.isCubeSolved(startCube)) {
+            return { solution: '', message: 'Cube is already solved!', phases: [] };
+        }
+
         // Context to share state
         const ctx = { cube: startCube };
-        let moves = [];
+        const resultPhases = [];
 
-        const apply = (move) => {
-            ctx.cube = ctx.cube.move(move);
-            moves.push(move);
+        const solveWithPhase = (name, solveFn) => {
+            const phaseMoves = [];
+            const apply = (move) => {
+                ctx.cube = ctx.cube.move(move);
+                phaseMoves.push(move);
+            };
+            solveFn(ctx, apply);
+            const optimized = this.optimizeMoves(phaseMoves);
+            resultPhases.push({ name, moves: optimized });
         };
 
         try {
-            console.log("Phase 1: Cross");
-            this.solveCross(ctx, apply);
-            console.log("Phase 2: F2L Corners");
-            this.solveF2LCorners(ctx, apply);
-            console.log("Phase 3: F2L Edges");
-            this.solveSecondLayerEdges(ctx, apply);
-            console.log("Phase 4: LL Cross Ori");
-            this.solveLastLayerCrossOrientation(ctx, apply);
-            console.log("Phase 5: LL Edge Perm");
-            this.solveLastLayerEdgePermutation(ctx, apply);
-            console.log("Phase 6: LL Corner Perm");
-            this.solveLastLayerCornerPermutation(ctx, apply);
-            console.log("Phase 7: LL Corner Ori");
-            this.solveLastLayerCornerOrientation(ctx, apply);
+            solveWithPhase("Phase 1: White Cross", (c, a) => this.solveCross(c, a));
+            solveWithPhase("Phase 2: White Corners", (c, a) => this.solveF2LCorners(c, a));
+            solveWithPhase("Phase 3: F2L Edges", (c, a) => this.solveSecondLayerEdges(c, a));
+            solveWithPhase("Phase 4: Last Layer Cross Orientation", (c, a) => this.solveLastLayerCrossOrientation(c, a));
+            solveWithPhase("Phase 5: Last Layer Edge Permutation", (c, a) => this.solveLastLayerEdgePermutation(c, a));
+            solveWithPhase("Phase 6: Last Layer Corner Permutation", (c, a) => this.solveLastLayerCornerPermutation(c, a));
+            solveWithPhase("Phase 7: Last Layer Corner Orientation", (c, a) => this.solveLastLayerCornerOrientation(c, a));
         } catch (e) {
             console.error("Solver failed at some phase:", e);
-            // Return what we have so far or fail
+            throw e;
         }
 
-        const optim = this.optimizeMoves(moves);
-        return { solution: optim.join(' ') };
+        const totalMoves = resultPhases.flatMap(p => p.moves);
+        return {
+            solution: totalMoves.join(' '),
+            phases: resultPhases
+        };
     }
 
     parseStickersToCube(stickers) {
@@ -159,6 +166,29 @@ class SolverService {
             edges[posIdx] = { id: edgeId, orientation };
         });
 
+        // Validate color counts
+        const colorCounts = {};
+        faces.forEach(f => {
+            stickers[f].forEach(c => {
+                colorCounts[c] = (colorCounts[c] || 0) + 1;
+            });
+        });
+
+        const invalidCounts = Object.entries(colorCounts).filter(([color, count]) => count !== 9);
+        if (invalidCounts.length > 0) {
+            console.error('Invalid color counts:', colorCounts);
+            throw new Error(`Invalid cube: Each color must appear exactly 9 times. Found: ${invalidCounts.map(([c, count]) => `${c}: ${count}`).join(', ')}`);
+        }
+
+        // Validate that all pieces were found
+        const invalidCorners = corners.map((c, i) => c.id === -1 ? cornerDefs[i].pos : null).filter(Boolean);
+        const invalidEdges = edges.map((e, i) => e.id === -1 ? edgeDefs[i].pos : null).filter(Boolean);
+
+        if (invalidCorners.length > 0 || invalidEdges.length > 0) {
+            const details = [...invalidCorners, ...invalidEdges].join(', ');
+            throw new Error(`Invalid cube configuration. These pieces are wrong: ${details}. Please check their colors.`);
+        }
+
         return new Cube({ corners, edges });
     }
 
@@ -207,6 +237,11 @@ class SolverService {
         for (const edgeId of targetEdges) {
             let current = ctx.cube.findEdge(edgeId);
 
+            // Null check - edge not found in cube
+            if (!current) {
+                throw new Error('Invalid cube configuration. The cube state appears to be corrupted.');
+            }
+
             // Check if already solved
             if (current.position === targetDPos[edgeId] && current.orientation === 0) continue;
 
@@ -214,6 +249,10 @@ class SolverService {
             if (current.position >= 4) { // In middle or bottom
                 this.moveEdgeToU(ctx, apply, edgeId);
                 current = ctx.cube.findEdge(edgeId); // Update state
+
+                if (!current) {
+                    throw new Error(`Edge ${edgeId} lost after moving to U layer. Internal solver error.`);
+                }
             }
 
             // Now edge is in U layer (0-3). 
@@ -244,6 +283,10 @@ class SolverService {
 
             // Now it is at desiredUPos. Check orientation.
             current = ctx.cube.findEdge(edgeId);
+
+            if (!current) {
+                throw new Error(`Edge ${edgeId} lost after U moves. Internal solver error.`);
+            }
 
             // If orientation is 0 (Good), we can just rotate 180 (F2, etc)
             // If orientation is 1 (Bad), we need to flip.
@@ -1191,6 +1234,23 @@ class SolverService {
             // 4 U moves = 360?
             // Cycle length is 4. Yes.
         }
+    }
+
+    isCubeSolved(cube) {
+        // Check if all pieces are in their correct positions with correct orientation
+        for (let i = 0; i < 8; i++) {
+            const corner = cube.state.corners[i];
+            if (corner.id !== i || corner.orientation !== 0) {
+                return false;
+            }
+        }
+        for (let i = 0; i < 12; i++) {
+            const edge = cube.state.edges[i];
+            if (edge.id !== i || edge.orientation !== 0) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 

@@ -56,14 +56,14 @@ export function CubeNet({ cubeState, onStickerClick }: CubeNetProps) {
 
     return (
         <div className="flex flex-col items-center gap-2 p-4 animate-in fade-in zoom-in duration-500">
-            {/* Top Row: U */}
+            {/* Row 1: U (Top) */}
             <div className="grid grid-cols-4 gap-2">
                 <div className="col-start-2">
                     <FaceGrid face="U" colors={cubeState.U} onStickerClick={onStickerClick} />
                 </div>
             </div>
 
-            {/* Middle Row: L, F, R, B */}
+            {/* Row 2: L, F, R, B (The standard 4-face row) */}
             <div className="grid grid-cols-4 gap-2">
                 <FaceGrid face="L" colors={cubeState.L} onStickerClick={onStickerClick} />
                 <FaceGrid face="F" colors={cubeState.F} onStickerClick={onStickerClick} />
@@ -71,11 +71,17 @@ export function CubeNet({ cubeState, onStickerClick }: CubeNetProps) {
                 <FaceGrid face="B" colors={cubeState.B} onStickerClick={onStickerClick} />
             </div>
 
-            {/* Bottom Row: D */}
+            {/* Row 3: D (Bottom) */}
             <div className="grid grid-cols-4 gap-2">
                 <div className="col-start-2">
                     <FaceGrid face="D" colors={cubeState.D} onStickerClick={onStickerClick} />
                 </div>
+            </div>
+
+            <div className="text-xs text-neutral-500 mt-4 flex gap-4 font-mono">
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600" /> BLUE (Top)</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-white" /> WHITE (Front)</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-green-600" /> GREEN (Bottom)</span>
             </div>
         </div>
     );

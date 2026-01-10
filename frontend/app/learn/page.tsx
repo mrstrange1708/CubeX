@@ -91,7 +91,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-video mb-8 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/cube-pieces.png"
+                                src="/assets/learn/cube-pieces.png"
                                 alt="Cube Pieces - Centers, Corners, and Edges"
                                 fill
                                 className="object-contain"
@@ -127,7 +127,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-[2.5/1] mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/rubik-guide.png"
+                                src="/assets/learn/rubik-guide.png"
                                 alt="Rubik's Cube Notation"
                                 fill
                                 className="object-contain p-4"
@@ -162,7 +162,7 @@ export default function LearnPage() {
 
                     <div className="relative w-full aspect-video mb-8 rounded-xl overflow-hidden bg-white">
                         <Image
-                            src="/learn/cube-layers.png"
+                            src="/assets/learn/cube-layers.png"
                             alt="Cube Layers"
                             fill
                             className="object-contain"
@@ -193,7 +193,7 @@ export default function LearnPage() {
                 <div className="relative w-full aspect-[2.5/1.7] mb-20 rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-900  to-neutral-800 border border-neutral-800">
                     <h2 className="text-5xl font-bold text-white p-6">Solving Progression</h2>
                     <Image
-                        src="/learn/solve-progression.png"
+                        src="/assets/learn/solve-progression.png"
                         alt="Solving Progression"
                         fill
                         className="object-contain p-6 pt-20"
@@ -212,7 +212,7 @@ export default function LearnPage() {
                         <h3 className="text-2xl font-semibold mb-4 text-white">White Cross</h3>
                         <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/white-cross.png"
+                                src="/assets/learn/white-cross.png"
                                 alt="White Cross"
                                 fill
                                 className="object-contain"
@@ -235,7 +235,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/white-corners.png"
+                                src="/assets/learn/white-corners.png"
                                 alt="White Corners Algorithm"
                                 fill
                                 className="object-contain"
@@ -294,7 +294,7 @@ export default function LearnPage() {
                         <p className="text-cyan-400 font-semibold mb-4">After completing all second layer edges:</p>
                         <div className="relative w-full aspect-video mx-auto rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/second-layer-result.png"
+                                src="/assets/learn/second-layer-result.png"
                                 alt="Second Layer Result"
                                 fill
                                 className="object-contain"
@@ -315,7 +315,7 @@ export default function LearnPage() {
                         <p className="text-amber-400 font-semibold mb-4">Starting Point:</p>
                         <div className="relative w-full aspect-video mx-auto rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/second-layer-result.png"
+                                src="/assets/learn/second-layer-result.png"
                                 alt="Last Layer Starting State"
                                 fill
                                 className="object-contain"
@@ -334,7 +334,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-[2/1] mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/yellow-cross-detailed.png"
+                                src="/assets/learn/yellow-cross-detailed.png"
                                 alt="Yellow Cross Guide"
                                 fill
                                 className="object-contain p-2"
@@ -359,7 +359,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-[2/1] mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/edge-permutation.png"
+                                src="/assets/learn/edge-permutation.png"
                                 alt="Edge Permutation"
                                 fill
                                 className="object-contain p-2"
@@ -383,7 +383,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-[2/1] mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/corner-orientation-guide.png"
+                                src="/assets/learn/corner-orientation-guide.png"
                                 alt="Corner Permutation"
                                 fill
                                 className="object-contain p-2"
@@ -408,7 +408,7 @@ export default function LearnPage() {
 
                         <div className="relative w-full aspect-[2/1] mb-6 rounded-xl overflow-hidden bg-white">
                             <Image
-                                src="/learn/solved-cube.png"
+                                src="/assets/learn/solved-cube.png"
                                 alt="Corner Orientation"
                                 fill
                                 className="object-contain p-2"
@@ -442,7 +442,7 @@ export default function LearnPage() {
                             {/* Profile Image */}
                             <div className="relative w-32 h-32 flex-shrink-0 mx-auto md:mx-0">
                                 <Image
-                                    src="/learn/profile-img.png"
+                                    src="/assets/learn/profile-img.png"
                                     alt="Shaik Junaid Sami"
                                     fill
                                     className="object-cover rounded-full ring-4 ring-blue-500/20"
