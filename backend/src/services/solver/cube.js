@@ -124,6 +124,32 @@ class Cube {
     cycleEdges(indices, orientationChange) {
         this.permuteEdges(indices, [orientationChange, orientationChange, orientationChange, orientationChange]);
     }
+
+    findEdge(edgeId) {
+        for (let i = 0; i < 12; i++) {
+            if (this.state.edges[i].id === edgeId) {
+                return { position: i, orientation: this.state.edges[i].orientation };
+            }
+        }
+        return null; // Should not happen in valid cube
+    }
+
+    findCorner(cornerId) {
+        for (let i = 0; i < 8; i++) {
+            if (this.state.corners[i].id === cornerId) {
+                return { position: i, orientation: this.state.corners[i].orientation };
+            }
+        }
+        return null;
+    }
+
+    getCornerAt(position) {
+        return this.state.corners[position];
+    }
+
+    getEdgeAt(position) {
+        return this.state.edges[position];
+    }
 }
 
 module.exports = Cube;

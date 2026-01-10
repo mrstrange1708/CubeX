@@ -1,6 +1,7 @@
-const SolverService = require('../services/solver/solver.service');
+const solverService = require('../services/solver/solver.service');
 
-const solverService = new SolverService();
+// Service is already instantiated on export
+
 
 const solveCube = (req, res) => {
     try {

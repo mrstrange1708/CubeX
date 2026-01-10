@@ -18,12 +18,9 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/', solverRoutes);
 
-app.get('/', (req, res) => {
-    res.json({ message: 'CubeSolver Backend is running' });
-});
 
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', port: PORT });
+    res.json({ status: 'ok', port: PORT , msg: 'CubeSolver Backend is running' , timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {

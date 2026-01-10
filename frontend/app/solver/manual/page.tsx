@@ -7,6 +7,18 @@ import { Button } from '@/components/ui/button';
 import { RotateCcw, Play } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
+import { useRouter } from 'next/navigation';
+import { MultiStepLoader } from '@/components/ui/multi-step-loader';
+
+const loadingStates = [
+    { text: "Analyzing Cube State..." },
+    { text: "Building White Cross..." },
+    { text: "Solving First Two Layers..." },
+    { text: "Orienting Last Layer..." },
+    { text: "Permuting Last Layer..." },
+    { text: "Optimizing Solution..." },
+    { text: "Finalizing..." },
+];
 
 const initialCubeState: CubeState = {
     U: Array(9).fill('white'),
@@ -18,9 +30,9 @@ const initialCubeState: CubeState = {
 };
 
 export default function SolvePage() {
+    const router = useRouter();
     const [cubeState, setCubeState] = useState<CubeState>(initialCubeState);
     const [selectedColor, setSelectedColor] = useState<CubeColor>('white');
-    const [solution, setSolution] = useState<string[]>([]);
     const [isSolving, setIsSolving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -33,15 +45,15 @@ export default function SolvePage() {
 
     const handeReset = () => {
         setCubeState(initialCubeState);
-        setSolution([]);
         setError(null);
     };
 
     const handleSolve = async () => {
         setIsSolving(true);
         setError(null);
-        setSolution([]);
         try {
+            // Start loading animation immediately
+
             const response = await fetch('http://localhost:7777/solve', {
                 method: 'POST',
                 headers: {
@@ -56,18 +68,23 @@ export default function SolvePage() {
                 throw new Error(data.error || 'Failed to solve cube');
             }
 
+            // Keep loading for at least 2s to show animation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             if (data.solution) {
-                setSolution(data.solution);
+                const solutionStr = data.solution.join(',');
+                router.push(`/solution?moves=${solutionStr}`);
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred');
-        } finally {
-            setIsSolving(false);
+            setIsSolving(false); // Only stop loading on error
         }
     };
 
     return (
         <div className="min-h-screen bg-black/95 text-foreground p-8 flex flex-col items-center justify-center relative overflow-hidden">
+            <MultiStepLoader loadingStates={loadingStates} loading={isSolving} duration={1500} />
+
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             <Navbar />
@@ -96,22 +113,6 @@ export default function SolvePage() {
                             </div>
                         )}
 
-                        {solution.length > 0 && (
-                            <div className="p-6 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
-                                <h3 className="text-lg font-semibold text-primary">Solution Found!</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {solution.map((move, i) => (
-                                        <span key={i} className="px-3 py-1 bg-white/5 rounded-md font-mono font-bold text-white/80">
-                                            {move}
-                                        </span>
-                                    ))}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    {solution.length} moves • Follow sequence L to R
-                                </p>
-                            </div>
-                        )}
-
                         <div className="flex gap-4 justify-center">
                             <Button
                                 variant="outline"
@@ -129,17 +130,8 @@ export default function SolvePage() {
                                 disabled={isSolving}
                                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                             >
-                                {isSolving ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                        Solving...
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Play className="w-4 h-4 mr-2" />
-                                        Solve Cube
-                                    </>
-                                )}
+                                <Play className="w-4 h-4 mr-2" />
+                                Solve Cube
                             </Button>
                         </div>
                     </div>
