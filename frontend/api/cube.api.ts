@@ -24,5 +24,13 @@ export const cubeApi = {
         } catch (error: any) {
             throw error.response?.data || { error: 'Failed to connect to the solver service' };
         }
+    },
+    scrambleCube: async (): Promise<{ stickers: CubeState, sequence: string[] }> => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/scramble`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data || { error: 'Failed to get scramble' };
+        }
     }
 };

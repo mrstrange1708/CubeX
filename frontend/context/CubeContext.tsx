@@ -17,15 +17,16 @@ interface CubeContextType {
     setSelectedColor: (color: CubeColor) => void;
     resetCube: () => void;
     solve: () => Promise<boolean>;
+    scramble: () => Promise<void>;
 }
 
 const initialCubeState: CubeState = {
-    U: Array(9).fill('blue'),
+    U: Array(9).fill('white'),
     L: Array(9).fill('orange'),
-    F: Array(9).fill('white'),
+    F: Array(9).fill('green'),
     R: Array(9).fill('red'),
-    B: Array(9).fill('yellow'),
-    D: Array(9).fill('green'),
+    B: Array(9).fill('blue'),
+    D: Array(9).fill('yellow'),
 };
 
 const CubeContext = createContext<CubeContextType | undefined>(undefined);
@@ -85,6 +86,21 @@ export function CubeProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const scramble = async () => {
+        setIsSolving(true);
+        try {
+            const data = await cubeApi.scrambleCube();
+            setCubeState(data.stickers);
+            setError(null);
+            setSolutionPhases([]);
+            toast.info("Cube Scrambled!");
+        } catch (err: any) {
+            toast.error("Scramble failed");
+        } finally {
+            setIsSolving(false);
+        }
+    };
+
     return (
         <CubeContext.Provider value={{
             cubeState,
@@ -96,7 +112,8 @@ export function CubeProvider({ children }: { children: ReactNode }) {
             updateSticker,
             setSelectedColor,
             resetCube,
-            solve
+            solve,
+            scramble
         }}>
             {children}
         </CubeContext.Provider>

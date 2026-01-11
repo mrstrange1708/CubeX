@@ -1,146 +1,221 @@
-# Rubik’s Cube Solver — Layer-by-Layer (All Phases)
+🧩 Optimal Rubik’s Cube Solver – Technical Design (Fast & Interview-Ready)
 
-## Objective
-Solve a Rubik’s Cube using a **layer-by-layer, phase-based approach** by tracking piece states, checking conditions, and applying controlled transformations until the cube reaches the solved state.
+Goal: Build a Rubik’s Cube solver that produces optimal (minimal) moves, displays the solution in standard notation, and visualizes the solution using a 3D animated cube.
 
----
-
-## Core Principle
-- The cube is treated as a **state machine**
-- Each phase has:
-  - Entry condition
-  - Goal
-  - Exit condition
-  - Invariant (what must not break)
-- Pieces (edges, corners) are tracked by **position and orientation**
-
----
-
-## Overall Solver Flow
-
-```text
-solveCube()
- ├─ Phase 1: Cross
- ├─ Phase 2: First Layer Corners
- ├─ Phase 3: Second Layer Edges
- ├─ Phase 4: Last Layer Cross Orientation
- ├─ Phase 5: Last Layer Edge Position
- ├─ Phase 6: Last Layer Corner Position
- ├─ Phase 7: Last Layer Corner Orientation
-
-### Phase 1: Cross (Plus)
-
-Goal: 
-Solve the bottom cross with correct alignment to centers.
-
-Exit Condition:
-isCrossSolved()
-```Steps:
-repeat until cross solved:
-  select an unsolved cross edge
-  locate the edge
-  move it to the top layer if needed
-  align it with its center
-  insert it into the bottom layer
-Invariant:
-Already solved cross edges must not move.
-
-### Phase 2: First Layer Corners
-
-Goal: 
-Complete the entire bottom layer.
-
-Exit Condition:
-isFirstLayerSolved()
-
-```Steps:
-repeat until first layer solved:
-  find a bottom-layer corner
-  if corner is misplaced:
-    move it to the top layer
-  rotate top layer to match target slot
-  insert corner without breaking cross
-
-Invariant:
-Bottom cross remains solved.
+This document replaces all previous inefficient logic (200+ moves, beginner methods) with a clean, optimal, industry-grade approach.
 
 ⸻
 
-### Phase 3: Second Layer Edges
+1. Why Old Logic Was Discarded
 
-Goal: 
-Solve all four middle-layer edges.
+Problems with Previous Approach
+	•	Generated 200+ moves → unacceptable UX
+	•	Beginner / layer-by-layer logic → not optimal
+	•	Users leave due to long, confusing solutions
+	•	Poor interview value (looks naive, not engineered)
 
-Exit Condition:
-isSecondLayerSolved()
+Correct Decision
 
-```Steps:
-repeat until top cross oriented:
-  detect edge orientation pattern
-  apply orientation transformation
-
-Invariant:
-First two layers stay solved.
+Deleting old logic is engineering maturity, not failure.
 
 ⸻
 
-### Phase 5: Last Layer Edge Position
-
-Goal:
-Place top-layer edges in correct positions.
-
-Exit Condition:
-areTopEdgesPositioned()
-
-```Steps:
-repeat until edges positioned:
-  detect correctly placed edge
-  cycle remaining edges
-
-Invariant:
-Top edge orientation remains unchanged.
+2. Core Design Philosophy
+	•	❌ Do NOT simulate human beginner methods
+	•	✅ Use optimal solving algorithms
+	•	✅ Separate logic, visualization, and presentation
+	•	✅ Single source of truth for cube state
 
 ⸻
 
-### Phase 6: Last Layer Corner Position
+3. Solver Strategy (Brain of the System)
 
-Goal:
-Move top-layer corners into correct locations (orientation ignored).
+Algorithm Choice
 
-Exit Condition:
-areTopCornersPositioned()
+Kociemba’s Two-Phase Algorithm
 
-```Steps:
-repeat until corners positioned:
-  identify correctly placed corner
-  cycle remaining corners
+Why:
+	•	Industry standard
+	•	Used in real cube solvers
+	•	Average solution: 18–22 moves
+	•	Maximum solution length: ≤ 25 moves
 
-
-Invariant:
-Top edges remain positioned.
+Rewriting this algorithm from scratch is not smart engineering. Integrating it and explaining it clearly is.
 
 ⸻
 
-### Phase 7: Last Layer Corner Orientation
+4. Cube Representation (Most Critical Part)
 
-Goal:
-Orient top-layer corners without changing their positions.
+❌ What NOT to Use
+	•	Flat color arrays
+	•	Face-based logic scattered across code
 
-Exit Condition:
-isCubeSolved()
-```Steps:
-repeat until cube solved:
-  select a misoriented corner
-  rotate corner using safe transformation
+✅ Correct Representation: Cubie-Based Model
 
+Represent the cube as:
 
-Invariant:
-Corner positions must not change.
+Corners
+	•	8 corner cubies
+	•	Each has:
+	•	Position (0–7)
+	•	Orientation (0–2)
+
+Edges
+	•	12 edge cubies
+	•	Each has:
+	•	Position (0–11)
+	•	Orientation (0–1)
+
+Why This Matters
+	•	Fast move application
+	•	Easy hashing & validation
+	•	Compatible with optimal solvers
+	•	Clean animation synchronization
 
 ⸻
 
-Move System (Shared by All Phases)
-applyMove(move):
-  update affected edges
-  update affected corners
+5. High-Level Solver Flow
 
+User Input (colors / scramble)
+        ↓
+Cube Validation (parity, orientation)
+        ↓
+Convert to Cubie Representation
+        ↓
+Run Two-Phase Solver
+        ↓
+Optimal Move List (R U R' F2 ...)
+        ↓
+ ┌───────────────────────┐
+ │  Notation Renderer    │
+ │  3D Animation Engine  │
+ └───────────────────────┘
+
+
+⸻
+
+6. Output Requirements
+
+6.1 Move Notation Display
+	•	Standard cube notation:
+	•	R L U D F B
+	•	’ for counter-clockwise
+	•	2 for double turns
+
+Example:
+
+R U R' U' F2
+
+Enhancements:
+	•	Highlight current move
+	•	Step-by-step navigation
+	•	Auto-play mode
+
+⸻
+
+7. 3D Cube Visualization
+
+Rendering Technology
+
+Three.js (WebGL abstraction)
+
+Why:
+	•	Industry standard
+	•	Full control over transformations
+	•	Interview-safe and respected
+
+⸻
+
+7.1 3D Scene Setup
+	•	Perspective Camera
+	•	Ambient + Directional Light
+	•	27 cubelets (3×3×3)
+	•	Each cubelet:
+	•	Mesh
+	•	6 face materials (colors)
+
+⸻
+
+7.2 Layer Rotation Logic (Animation Engine)
+
+For each move (example: R):
+	1.	Identify cubelets in the right layer
+	2.	Temporarily group them
+	3.	Rotate group by 90° on correct axis
+	4.	Apply rotation permanently to cube state
+	5.	Ungroup cubelets
+
+This mirrors real cube mechanics.
+
+⸻
+
+8. Animation Controls (User Experience)
+
+Required Controls:
+	•	▶ Play
+	•	⏸ Pause
+	•	⏭ Step Forward
+	•	⏮ Step Backward
+	•	⏱ Speed Control
+
+Principle: clarity > visual gimmicks
+
+⸻
+
+9. Strict Non-Goals (What NOT To Do)
+	•	❌ Rebuild beginner solvers
+	•	❌ Stack random heuristics
+	•	❌ Animate without syncing cube state
+	•	❌ Ignore cube validity checks
+	•	❌ Over-engineer UI before logic is correct
+
+⸻
+
+10. Interview Value of This Project
+
+This project demonstrates:
+	•	Algorithmic thinking
+	•	State machines
+	•	Group theory basics
+	•	3D transformations
+	•	Performance awareness
+	•	Product-level UX thinking
+
+This is far stronger than CRUD + authentication projects.
+
+⸻
+
+11. Implementation Roadmap
+
+Step 1
+
+Design cubie-based cube representation
+
+Step 2
+
+Integrate Two-Phase optimal solver
+
+Step 3
+
+Implement move executor (single source of truth)
+
+Step 4
+
+Connect executor to Three.js animation engine
+
+Step 5
+
+Add notation display + playback controls
+
+⸻
+
+12. Final Note
+
+Deleting bad logic is discipline.
+Finishing this system is execution.
+
+This project can either:
+	•	❌ Die as another unfinished repo
+	•	✅ Become a signature interview weapon
+
+Choose deliberately.

@@ -3,7 +3,7 @@
 import { CubeNet } from '@/components/solver/CubeNet';
 import { ColorPicker } from '@/components/solver/ColorPicker';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Play } from 'lucide-react';
+import { RotateCcw, Play, Zap } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 import { MultiStepLoader } from '@/components/ui/multi-step-loader';
@@ -11,13 +11,13 @@ import { useCube } from '@/context/CubeContext';
 import { FaceKey } from '@/components/solver/CubeNet';
 
 const loadingStates = [
-    { text: "Phase 1: Solving the Cross" },
-    { text: "Phase 2: Solving F2L Corners" },
-    { text: "Phase 3: Solving Second Layer Edges" },
-    { text: "Phase 4: Orienting Last Layer Cross" },
-    { text: "Phase 5: Permuting Last Layer Edges" },
-    { text: "Phase 6: Permuting Last Layer Corners" },
-    { text: "Phase 7: Orienting Last Layer Corners" },
+    { text: "Initializing Cubie Model" },
+    { text: "Generating Move Tables" },
+    { text: "Reducing to Subgroup H (Phase 1)" },
+    { text: "Optimal Path Search (Phase 2)" },
+    { text: "Implementing IDA* Heuristics" },
+    { text: "Optimizing Solution Depth" },
+    { text: "Loading 3D Visualization" },
 ];
 
 export default function SolvePage() {
@@ -30,7 +30,8 @@ export default function SolvePage() {
         updateSticker,
         setSelectedColor,
         resetCube,
-        solve
+        solve,
+        scramble
     } = useCube();
 
     const handleStickerClick = (face: FaceKey, index: number) => {
@@ -80,25 +81,35 @@ export default function SolvePage() {
                             onColorSelect={setSelectedColor}
                         />
 
-                        <div className="flex gap-4 justify-center">
+                        <div className="grid grid-cols-2 gap-4 w-full">
                             <Button
                                 variant="outline"
                                 size="lg"
                                 onClick={resetCube}
                                 disabled={isSolving}
-                                className="w-full border-white/10 hover:bg-white/5 hover:text-white"
+                                className="border-white/10 hover:bg-white/5 hover:text-white"
                             >
                                 <RotateCcw className="w-4 h-4 mr-2" />
                                 Reset
                             </Button>
                             <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={scramble}
+                                disabled={isSolving}
+                                className="border-white/10 hover:bg-white/5 hover:text-white"
+                            >
+                                <Zap className="w-4 h-4 mr-2" />
+                                Scramble
+                            </Button>
+                            <Button
                                 size="lg"
                                 onClick={handleSolve}
                                 disabled={isSolving}
-                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
+                                className="col-span-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                             >
                                 <Play className="w-4 h-4 mr-2" />
-                                Solve Cube
+                                Solve
                             </Button>
                         </div>
                     </div>

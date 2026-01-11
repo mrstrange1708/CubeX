@@ -1,17 +1,34 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HelpCircle, RotateCcw } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowLeft, Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
 import { useCube } from "@/context/CubeContext";
-import { Phase } from '@/api/cube.api';
+import Cube3D from '@/components/solver/Cube3D';
 
 function SolutionContent() {
     const { solutionPhases: phases } = useCube();
     const router = useRouter();
+
+    const [currentMove, setCurrentMove] = useState(-1);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1000);
+
+    const allMoves = phases?.flatMap(p => p.moves) || [];
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isPlaying && currentMove < allMoves.length - 1) {
+            interval = setInterval(() => {
+                setCurrentMove(prev => prev + 1);
+            }, speed);
+        } else if (currentMove >= allMoves.length - 1) {
+            setIsPlaying(false);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, currentMove, allMoves.length, speed]);
 
     if (!phases || phases.length === 0) {
         return (
@@ -27,132 +44,128 @@ function SolutionContent() {
         );
     }
 
-    const totalMoves = phases.reduce((acc: number, p: Phase) => acc + p.moves.length, 0);
-
     return (
-        <div className="z-10 w-full max-w-5xl flex flex-col items-center gap-10 pt-10 pb-20 px-6">
-            {/* Header */}
-            <div className="text-center space-y-4 mt-22" >
+        <div className="z-10 w-full max-w-6xl flex flex-col items-center gap-8 pt-20 pb-20 px-6">
+            <div className="text-center space-y-4 pt-10">
                 <h1 className="text-4xl md:text-6xl font-black tracking-tighter bg-gradient-to-br from-white to-white/50 bg-clip-text text-transparent">
-                    Solution Found
+                    Step-by-Step Solution
                 </h1>
                 <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                    Follow the steps below to solve your cube layer by layer.
+                    Use the 3D player below to follow the optimal {allMoves.length}-move solution.
                 </p>
             </div>
 
-            {/* Notation & Orientation Guide */}
-            <div className="w-full grid md:grid-cols-2 gap-6">
-                {/* Notation */}
-                <div className="bg-neutral-900/50 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                            <HelpCircle className="w-6 h-6 text-purple-400" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-white">Algorithm Guide</h2>
-                            <p className="text-neutral-400 text-sm">Notation Symbols</p>
-                        </div>
-                    </div>
+            <div className="w-full grid lg:grid-cols-2 gap-8 items-start">
+                {/* 3D Player Column */}
+                <div className="space-y-6">
+                    <Cube3D
+                        moves={allMoves}
+                        currentMove={currentMove}
+                        initialState={useCube().cubeState}
+                        showScramble={false}
+                    />
 
-                    <div className="relative w-full aspect-video bg-white rounded-xl overflow-hidden p-2">
-                        <Image
-                            src="/assets/learn/rubik-guide.png"
-                            alt="Rubik's Cube Notation Guide"
-                            fill
-                            className="object-contain"
-                        />
-                    </div>
-                </div>
+                    {/* Playback Controls */}
+                    <div className="bg-neutral-900/50 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
+                        <div className="flex items-center justify-between">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => { setCurrentMove(-1); setIsPlaying(false); }}
+                                className="w-12 h-12 border-white/10 hover:bg-white/5"
+                            >
+                                <SkipBack className="w-5 h-5 text-white" />
+                            </Button>
 
-                {/* Orientation */}
-                <div className="bg-neutral-900/50 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                            <RotateCcw className="w-6 h-6 text-blue-400" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-white">Starting Orientation</h2>
-                            <p className="text-neutral-400 text-sm">How to hold your cube</p>
-                        </div>
-                    </div>
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentMove <= -1}
+                                    onClick={() => setCurrentMove(prev => prev - 1)}
+                                    className="w-12 h-12 border-white/10 hover:bg-white/5"
+                                >
+                                    <SkipBack className="w-5 h-5 text-white transform rotate-180" />
+                                </Button>
 
-                    <div className="space-y-4 text-neutral-300">
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                            <p className="text-sm leading-relaxed">
-                                <strong className="text-white">Crucial:</strong> Hold the cube exactly as you painted it on the input screen.
-                            </p>
-                        </div>
+                                <Button
+                                    onClick={() => setIsPlaying(!isPlaying)}
+                                    className="w-16 h-16 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+                                >
+                                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                                </Button>
 
-                        <ul className="space-y-3">
-                            <li className="flex gap-3 text-sm">
-                                <div className="w-5 h-5 rounded bg-white/20 border border-white/50 flex-shrink-0" />
-                                <span><strong className="text-white">Front:</strong> Face the <span className="text-white">White</span> center towards you.</span>
-                            </li>
-                            <li className="flex gap-3 text-sm">
-                                <div className="w-5 h-5 rounded bg-blue-500/20 border border-blue-500/50 flex-shrink-0" />
-                                <span><strong className="text-white">Top:</strong> Keep the <span className="text-blue-400">Blue</span> center on top.</span>
-                            </li>
-                        </ul>
-
-                        <p className="text-xs text-neutral-500 italic">
-                            All moves in the phases below (R, U, F, etc.) are relative to this fixed position. Do not rotate the entire cube while performing the steps!
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Total Summary & Action */}
-            <div className="w-full flex justify-between items-center bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                <div className="space-y-1">
-                    <h2 className="text-xl font-bold text-white">Full Solution</h2>
-                    <p className="text-neutral-400 text-sm">{totalMoves} total moves • 7 Phases</p>
-                </div>
-                <Button
-                    variant="outline"
-                    onClick={() => router.push('/solver/manual')}
-                    className="border-white/10 hover:bg-white/5"
-                >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Solve Another
-                </Button>
-            </div>
-
-            {/* Phase Cards */}
-            <div className="w-full flex flex-col gap-8">
-                {phases.map((phase: Phase, phaseIdx: number) => (
-                    phase.moves.length > 0 && (
-                        <div key={phaseIdx} className="w-full bg-neutral-900/50 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-                            <div className="flex flex-col gap-6">
-                                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold border border-blue-500/30">
-                                            {phaseIdx + 1}
-                                        </div>
-                                        <h2 className="text-2xl font-bold text-white uppercase tracking-tight">{phase.name}</h2>
-                                    </div>
-                                    <span className="text-neutral-500 text-sm font-mono">{phase.moves.length} moves</span>
-                                </div>
-
-                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2 md:gap-3">
-                                    {phase.moves.map((move: string, i: number) => (
-                                        <div
-                                            key={i}
-                                            className="aspect-square flex flex-col items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all group"
-                                        >
-                                            <span className="text-xl md:text-2xl font-black text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-all">
-                                                {move}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentMove >= allMoves.length - 1}
+                                    onClick={() => setCurrentMove(prev => prev + 1)}
+                                    className="w-12 h-12 border-white/10 hover:bg-white/5"
+                                >
+                                    <SkipForward className="w-5 h-5 text-white" />
+                                </Button>
                             </div>
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => router.push('/solver/manual')}
+                                className="w-12 h-12 border-white/10 hover:bg-white/5"
+                            >
+                                <RotateCcw className="w-5 h-5 text-white " />
+                            </Button>
                         </div>
-                    )
-                ))}
+
+                        {/* Speed Slider Placeholder (Optional) */}
+                        <div className="flex items-center gap-4 text-sm text-neutral-400">
+                            <span>Speed</span>
+                            <input
+                                type="range"
+                                min="200"
+                                max="2000"
+                                step="100"
+                                value={speed}
+                                onChange={(e) => setSpeed(Number(e.target.value))}
+                                className="flex-1 accent-primary"
+                            />
+                            <span>{speed}ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Move List Column */}
+                <div className="h-full flex flex-col gap-6">
+                    <div className="bg-neutral-900/50 backdrop-blur-md border border-white/10 rounded-3xl p-8 flex-1 shadow-2xl overflow-y-auto max-h-[600px] scrollbar-hide">
+                        <div className="mb-6 border-b border-white/5 pb-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white uppercase tracking-wider">Solution Moves</h2>
+                            <span className="text-primary font-mono font-bold">{currentMove + 1} / {allMoves.length}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            {allMoves.map((move, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => { setCurrentMove(i); setIsPlaying(false); }}
+                                    className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-black border transition-all ${i === currentMove
+                                        ? 'bg-primary border-primary text-white scale-110 shadow-lg shadow-primary/30'
+                                        : 'bg-white/5 border-white/10 text-neutral-400 hover:border-white/20 hover:bg-white/10'
+                                        }`}
+                                >
+                                    {move}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push('/solver/manual')}
+                        className="text-neutral-400 hover:text-white"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Edit Colors
+                    </Button>
+                </div>
             </div>
-
-
         </div>
     );
 }
@@ -160,7 +173,6 @@ function SolutionContent() {
 export default function SolutionPage() {
     return (
         <div className="min-h-screen bg-black/95 text-foreground flex flex-col items-center relative overflow-x-hidden">
-            {/* Background Effects */}
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 

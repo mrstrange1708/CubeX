@@ -79,9 +79,9 @@ export function CubeNet({ cubeState, onStickerClick }: CubeNetProps) {
             </div>
 
             <div className="text-xs text-neutral-500 mt-4 flex gap-4 font-mono">
-                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600" /> BLUE (Top)</span>
-                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-white" /> WHITE (Front)</span>
-                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-green-600" /> GREEN (Bottom)</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-white" /> WHITE (Top)</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-green-600" /> GREEN (Front)</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400" /> YELLOW (Bottom)</span>
             </div>
         </div>
     );
