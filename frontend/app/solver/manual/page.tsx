@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { MultiStepLoader } from '@/components/ui/multi-step-loader';
 import { useCube } from '@/context/CubeContext';
 import { FaceKey } from '@/components/solver/CubeNet';
+import { Suspense } from 'react';
 
 const loadingStates = [
     { text: "Initializing Cubie Model" },
@@ -18,7 +19,7 @@ const loadingStates = [
     { text: "Loading 3D Visualization" },
 ];
 
-export default function SolvePage() {
+function SolveContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const shouldReset = searchParams.get('reset');
@@ -151,5 +152,17 @@ export default function SolvePage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SolvePage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-black/95 flex items-center justify-center">
+                <div className="text-white">Loading Solver...</div>
+            </div>
+        }>
+            <SolveContent />
+        </Suspense>
     );
 }
