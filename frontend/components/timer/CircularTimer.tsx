@@ -7,17 +7,18 @@ import { Trophy } from 'lucide-react';
 interface CircularTimerProps {
     time: number; // milliseconds
     state: 'IDLE' | 'HOLDING' | 'READY' | 'RUNNING' | 'STOPPED';
+    percentile?: number | null;
     className?: string;
 }
 
-export default function CircularTimer({ time, state, className }: CircularTimerProps) {
+export default function CircularTimer({ time, state, percentile, className }: CircularTimerProps) {
     // WR Target: 3.13s (3130ms)
     // Scale: 10s full circle for visual impact
     const maxTime = 10000;
     const wrTime = 3130;
 
-    // Progress calculation (0 to 100)
-    const progress = Math.min((time / maxTime) * 100, 100);
+    // Progress calculation (loops every 10s)
+    const progress = ((time % maxTime) / maxTime) * 100;
     const wrProgress = (wrTime / maxTime) * 100;
 
     const radius = 140;
@@ -111,12 +112,21 @@ export default function CircularTimer({ time, state, className }: CircularTimerP
                 </div>
 
                 {/* Subtext */}
-                <div className="mt-2 text-sm font-medium tracking-widest text-neutral-500 uppercase">
+                <div className={cn("mt-2 text-sm font-medium tracking-widest text-neutral-500 uppercase flex flex-col items-center gap-1")}>
                     {state === 'IDLE' && "Hold Space"}
                     {state === 'HOLDING' && "Wait..."}
                     {state === 'READY' && "RELEASE!"}
                     {state === 'RUNNING' && (time < wrTime ? "GO FOR WR!" : "KEEP GOING")}
-                    {state === 'STOPPED' && (time < wrTime ? <span className="flex items-center gap-1 text-yellow-500"><Trophy size={14} /> NEW RECORD?</span> : "Reset")}
+                    {state === 'STOPPED' && (
+                        <>
+                            {time < wrTime ? <span className="flex items-center gap-1 text-yellow-500"><Trophy size={14} /> NEW RECORD?</span> : "Reset"}
+                            {percentile && (
+                                <span className="text-blue-400 font-bold animate-pulse text-xs md:text-sm mt-1">
+                                    Top {percentile}% of the World 🌍
+                                </span>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
 

@@ -69,7 +69,7 @@ const LoaderCore = ({
                   className={cn(
                     "text-black dark:text-white",
                     value === index &&
-                      "text-black dark:text-lime-500 opacity-100"
+                    "text-black dark:text-lime-500 opacity-100"
                   )}
                 />
               )}
@@ -94,11 +94,15 @@ export const MultiStepLoader = ({
   loading,
   duration = 2000,
   loop = true,
+  finished = false,
+  onAnimationComplete,
 }: {
   loadingStates: LoadingState[];
   loading?: boolean;
   duration?: number;
   loop?: boolean;
+  finished?: boolean;
+  onAnimationComplete?: () => void;
 }) => {
   const [currentState, setCurrentState] = useState(0);
 
@@ -107,18 +111,41 @@ export const MultiStepLoader = ({
       setCurrentState(0);
       return;
     }
+
+    // Timer Logic for state transitions
+    const stepDuration = finished ? 200 : duration;
+
+    // If we are at the end and not looping, we stop the timer here.
+    // We only need the timer if we are NOT at the end yet, OR if we are looping.
+    const isAtEnd = currentState === loadingStates.length - 1;
+    if (!loop && isAtEnd) return;
+
     const timeout = setTimeout(() => {
-      setCurrentState((prevState) =>
-        loop
-          ? prevState === loadingStates.length - 1
-            ? 0
-            : prevState + 1
-          : Math.min(prevState + 1, loadingStates.length - 1)
-      );
-    }, duration);
+      setCurrentState((prevState) => {
+        if (loop) {
+          return prevState === loadingStates.length - 1 ? 0 : prevState + 1;
+        } else {
+          return Math.min(prevState + 1, loadingStates.length - 1);
+        }
+      });
+    }, stepDuration);
 
     return () => clearTimeout(timeout);
-  }, [currentState, loading, loop, loadingStates.length, duration]);
+  }, [currentState, loading, loop, loadingStates.length, duration, finished]);
+
+  // Completion Logic
+  useEffect(() => {
+    if (!loading || loop) return;
+
+    const isAtEnd = currentState === loadingStates.length - 1;
+    if (isAtEnd && finished && onAnimationComplete) {
+      const timer = setTimeout(() => {
+        onAnimationComplete();
+      }, 500); // Small delay to show the final state
+      return () => clearTimeout(timer);
+    }
+  }, [currentState, loading, loop, finished, onAnimationComplete, loadingStates.length]);
+
   return (
     <AnimatePresence mode="wait">
       {loading && (

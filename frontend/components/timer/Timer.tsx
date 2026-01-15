@@ -9,88 +9,104 @@ interface TimerProps {
     onStop?: (time: number) => void;
     className?: string;
     isScrambled?: boolean;
+    percentile?: number | null;
 }
 
 type TimerState = 'IDLE' | 'HOLDING' | 'READY' | 'RUNNING' | 'STOPPED';
 
-export default function Timer({ onStart, onStop, className, isScrambled = false }: TimerProps) {
+export default function Timer({ onStart, onStop, className, isScrambled = false, percentile }: TimerProps) {
     const [time, setTime] = useState(0);
     const [state, setState] = useState<TimerState>('IDLE');
+
+    // Refs for mutable values accessed in stable listeners
+    const stateRef = useRef<TimerState>('IDLE');
+    const onStartRef = useRef(onStart);
+    const onStopRef = useRef(onStop);
+
+    // Animation Refs
     const requestRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
     const holdStartRef = useRef<number>(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Sync Props/State to Refs
+    useEffect(() => { stateRef.current = state; }, [state]);
+    useEffect(() => { onStartRef.current = onStart; }, [onStart]);
+    useEffect(() => { onStopRef.current = onStop; }, [onStop]);
+
+    // Animation Loop (Stable)
     const animate = useCallback(() => {
         const now = performance.now();
         setTime(now - startTimeRef.current);
         requestRef.current = requestAnimationFrame(animate);
     }, []);
 
-    const startTimer = useCallback(() => {
-        startTimeRef.current = performance.now();
-        setState('RUNNING');
-        requestRef.current = requestAnimationFrame(animate);
-        onStart?.();
-    }, [animate, onStart]);
-
-    const stopTimer = useCallback(() => {
-        if (state === 'RUNNING') {
-            cancelAnimationFrame(requestRef.current);
-            const finalTime = performance.now() - startTimeRef.current;
-            setTime(finalTime);
-            setState('STOPPED');
-            onStop?.(finalTime);
-        }
-    }, [state, onStop]);
-
-    // Handle Spacebar Logic
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.code === 'Space') {
-            e.preventDefault(); // Prevent scrolling
-
-            if (state === 'RUNNING') {
-                stopTimer();
-            } else if (state === 'IDLE' || state === 'STOPPED') {
-                setState('HOLDING');
-                holdStartRef.current = Date.now();
-
-                // Wait 300ms to become READY
-                timeoutRef.current = setTimeout(() => {
-                    setState('READY');
-                }, 300);
-            }
-        }
-    }, [state, stopTimer]);
-
-    const handleKeyUp = useCallback((e: KeyboardEvent) => {
-        if (e.code === 'Space') {
-            if (state === 'READY') {
-                startTimer();
-            } else if (state === 'HOLDING') {
-                setState('IDLE');
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            } else if (state === 'STOPPED') {
-                setState('IDLE');
-                setTime(0);
-            }
-        }
-    }, [state, startTimer]);
-
+    // Keyboard Listeners (Stable, attached once)
     useEffect(() => {
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
+        const handleDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (e.repeat) return; // Prevent key repeat from resetting hold timer
+
+                const currentState = stateRef.current; // Read fresh state from ref
+
+                if (currentState === 'RUNNING') {
+                    // Stop Logic
+                    cancelAnimationFrame(requestRef.current);
+                    const finalTime = performance.now() - startTimeRef.current;
+                    setTime(finalTime);
+                    setState('STOPPED');
+                    if (onStopRef.current) onStopRef.current(finalTime);
+                } else if (currentState === 'IDLE' || currentState === 'STOPPED') {
+                    // Start Hold Logic
+                    setState('HOLDING');
+                    holdStartRef.current = Date.now();
+
+                    // Wait 300ms to become READY
+                    timeoutRef.current = setTimeout(() => {
+                        setState('READY');
+                    }, 300);
+                }
+            }
+        };
+
+        const handleUp = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                const currentState = stateRef.current; // Read fresh state from ref
+
+                if (currentState === 'READY') {
+                    // Start Logic
+                    startTimeRef.current = performance.now();
+                    setState('RUNNING');
+                    requestRef.current = requestAnimationFrame(animate);
+                    if (onStartRef.current) onStartRef.current();
+                } else if (currentState === 'HOLDING') {
+                    // Released too early (Reset)
+                    setState('IDLE');
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                } else if (currentState === 'STOPPED') {
+                    // Reset to Idle
+                    setState('IDLE');
+                    setTime(0);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleDown);
+        window.addEventListener('keyup', handleUp);
+
+        // Cleanup
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('keydown', handleDown);
+            window.removeEventListener('keyup', handleUp);
             cancelAnimationFrame(requestRef.current);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [handleKeyDown, handleKeyUp]);
+    }, [animate]); // animate is stable
 
     return (
         <div className={cn("flex flex-col items-center justify-center select-none", className)}>
-            <CircularTimer time={time} state={state} />
+            <CircularTimer time={time} state={state} percentile={percentile} />
         </div>
     );
 }

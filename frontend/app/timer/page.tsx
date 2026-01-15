@@ -14,6 +14,7 @@ export default function TimerPage() {
     const [isClient, setIsClient] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
     const [userId, setUserId] = useState<string>("");
+    const [lastPercentile, setLastPercentile] = useState<number | null>(null);
 
     useEffect(() => {
         setIsClient(true);
@@ -35,6 +36,7 @@ export default function TimerPage() {
 
     const handleStart = () => {
         setIsSolving(true);
+        setLastPercentile(null);
     };
 
     const handleStop = async (time: number) => {
@@ -55,12 +57,14 @@ export default function TimerPage() {
                 // If it fails (e.g. user doesn't exist), maybe prompt login
                 console.warn("Solve not saved to DB (User might not exist)");
             } else {
+
                 // 2. Fetch Percentile
                 const rankRes = await fetch(`http://localhost:7777/leaderboard/percentile/${userId}`);
                 const rankData = await rankRes.json();
 
                 if (rankData.percentile) {
-                    toast.success(`Awesome! You're in the Top ${rankData.percentile}% of solvers! 🏆`);
+                    setLastPercentile(rankData.percentile);
+                    toast.success(`Whoa! Top ${rankData.percentile}% of the World! �`);
                 } else if (rankData.rank) {
                     toast.info(`Rank #${rankData.rank} globally!`);
                 }
@@ -93,22 +97,9 @@ export default function TimerPage() {
 
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-4">
 
-                {/* Scramble Display (Hidden while solving) */}
-                <div
-                    className={`w-full max-w-4xl text-center mb-12 transition-opacity duration-300 ${isSolving ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                    onClick={!isSolving ? handleNewScramble : undefined}
-                >
-                    <div className="text-2xl md:text-3xl lg:text-4xl font-mono font-bold tracking-wider text-neutral-300 hover:text-blue-400 cursor-pointer transition-colors select-none">
-                        {scramble}
-                    </div>
-                    <div className="text-sm text-neutral-600 mt-2 flex items-center justify-center gap-2">
-                        <RefreshCw size={14} /> Click to refresh
-                    </div>
-                </div>
-
                 {/* Timer (Circular) */}
                 <div className="mb-20">
-                    <Timer onStart={handleStart} onStop={handleStop} className="scale-110 md:scale-125" />
+                    <Timer onStart={handleStart} onStop={handleStop} className="scale-110 md:scale-125" percentile={lastPercentile} />
                 </div>
 
                 {/* Session Stats */}

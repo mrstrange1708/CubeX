@@ -2,6 +2,7 @@
 
 import { CubeNet } from '@/components/solver/CubeNet';
 import { ColorPicker } from '@/components/solver/ColorPicker';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, Play, Zap } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -12,10 +13,7 @@ import { FaceKey } from '@/components/solver/CubeNet';
 
 const loadingStates = [
     { text: "Initializing Cubie Model" },
-    { text: "Generating Move Tables" },
-    { text: "Reducing to Subgroup H (Phase 1)" },
-    { text: "Optimal Path Search (Phase 2)" },
-    { text: "Implementing IDA* Heuristics" },
+    { text: "Searching for Optimal Solution" },
     { text: "Optimizing Solution Depth" },
     { text: "Loading 3D Visualization" },
 ];
@@ -34,20 +32,40 @@ export default function SolvePage() {
         scramble
     } = useCube();
 
+    const [loaderActive, setLoaderActive] = useState(false);
+    const [isWorkDone, setIsWorkDone] = useState(false);
+
     const handleStickerClick = (face: FaceKey, index: number) => {
         updateSticker(face, index, selectedColor);
     };
 
     const handleSolve = async () => {
+        setLoaderActive(true);
+        setIsWorkDone(false);
         const success = await solve();
+
         if (success) {
-            router.push('/solution');
+            setIsWorkDone(true);
+        } else {
+            setLoaderActive(false);
         }
+    };
+
+    const onLoaderComplete = () => {
+        setLoaderActive(false);
+        router.push('/solution');
     };
 
     return (
         <div className="min-h-screen bg-black/95 text-foreground p-8 flex flex-col items-center justify-center relative overflow-hidden pb-20">
-            <MultiStepLoader loadingStates={loadingStates} loading={isSolving} duration={1500} />
+            <MultiStepLoader
+                loadingStates={loadingStates}
+                loading={loaderActive}
+                duration={1500}
+                loop={false}
+                finished={isWorkDone}
+                onAnimationComplete={onLoaderComplete}
+            />
 
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
