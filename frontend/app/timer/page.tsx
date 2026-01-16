@@ -7,6 +7,8 @@ import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect
 import { generateScramble } from "@/lib/scramble";
 import { RefreshCw, History, Trash2, Trophy } from "lucide-react";
 import { toast } from "react-toastify";
+import { solveApi } from "@/api/solve.api";
+import { leaderboardApi } from "@/api/leaderboard.api";
 
 export default function TimerPage() {
     const [scramble, setScramble] = useState("");
@@ -47,27 +49,20 @@ export default function TimerPage() {
         // Backend Integration
         try {
             // 1. Save Solve
-            const saveRes = await fetch('http://localhost:7777/solve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, time, scramble })
-            });
-
-            if (!saveRes.ok) {
-                // If it fails (e.g. user doesn't exist), maybe prompt login
-                console.warn("Solve not saved to DB (User might not exist)");
-            } else {
+            if (userId) {
+                await solveApi.saveSolve({ userId, time: Math.round(time), scramble });
 
                 // 2. Fetch Percentile
-                const rankRes = await fetch(`http://localhost:7777/leaderboard/percentile/${userId}`);
-                const rankData = await rankRes.json();
+                const rankData = await leaderboardApi.getUserRank(userId);
 
                 if (rankData.percentile) {
                     setLastPercentile(rankData.percentile);
-                    toast.success(`Whoa! Top ${rankData.percentile}% of the World! �`);
+                    toast.success(`Whoa! Top ${rankData.percentile}% of the World! 🏆`);
                 } else if (rankData.rank) {
                     toast.info(`Rank #${rankData.rank} globally!`);
                 }
+            } else {
+                console.warn("Solve not saved: userId is missing");
             }
 
         } catch (error) {

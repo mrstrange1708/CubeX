@@ -3,24 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect';
-import { Medal, Trophy, User, Clock, Hash } from 'lucide-react';
+import { Medal, Trophy, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
-
-interface LeaderboardUser {
-    id: string;
-    username: string;
-    avatar: string | null;
-    bestSolve: number;
-    totalSolves: number;
-}
-
-interface UserRankHelper {
-    rank: number;
-    totalPlayers: number;
-    percentile: number;
-    bestSolve: number | null;
-}
+import { leaderboardApi, LeaderboardUser, UserRankData as UserRankHelper } from '@/api/leaderboard.api';
 
 export default function LeaderboardPage() {
     const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
@@ -36,14 +22,12 @@ export default function LeaderboardPage() {
                 setCurrentUserId(userId);
 
                 // 2. Fetch Global Leaderboard
-                const res = await fetch('http://localhost:7777/leaderboard/global?limit=100');
-                const data = await res.json();
+                const data = await leaderboardApi.getGlobalLeaderboard(100);
                 setLeaderboard(data);
 
                 // 3. Fetch User Rank if available
                 if (userId) {
-                    const rankRes = await fetch(`http://localhost:7777/leaderboard/percentile/${userId}`);
-                    const rankData = await rankRes.json();
+                    const rankData = await leaderboardApi.getUserRank(userId);
                     setUserRankData(rankData);
                 }
             } catch (error) {

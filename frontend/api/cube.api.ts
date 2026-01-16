@@ -1,7 +1,5 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { CubeState } from '@/components/solver/CubeNet';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:7777';
 
 export interface Phase {
     name: string;
@@ -19,7 +17,7 @@ export interface SolveResponse {
 export const cubeApi = {
     solveCube: async (cubeState: CubeState): Promise<SolveResponse> => {
         try {
-            const response = await axios.post<SolveResponse>(`${API_BASE_URL}/solve`, cubeState);
+            const response = await api.post<SolveResponse>('/solve', cubeState);
             return response.data;
         } catch (error: any) {
             throw error.response?.data || { error: 'Failed to connect to the solver service' };
@@ -27,7 +25,7 @@ export const cubeApi = {
     },
     scrambleCube: async (): Promise<{ stickers: CubeState, sequence: string[] }> => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/scramble`);
+            const response = await api.get('/scramble');
             return response.data;
         } catch (error: any) {
             throw error.response?.data || { error: 'Failed to get scramble' };
