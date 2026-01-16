@@ -1,8 +1,11 @@
 const express = require('express');
-const app = express();
+const http = require('http');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
+
+// Import Socket
+const { initializeSocket } = require('./src/socket');
 
 // Import Routes
 const authRoutes = require('./src/routes/auth.routes');
@@ -17,11 +20,23 @@ const messagesRoutes = require('./src/routes/messages.routes');
 const { authMiddleware, optionalAuthMiddleware } = require('./src/middleware/auth.middleware');
 
 dotenv.config();
-app.use(cors());
+
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = initializeSocket(server);
+
+// Make io accessible in routes
+app.set('io', io);
 
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 7777;
 
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true
+}));
 app.use(express.json());
 
 // ============================================
@@ -31,7 +46,7 @@ app.use('/auth', authRoutes);
 
 // Health check (public)
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', port: PORT, msg: 'CubeSolver Backend is running', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', port: PORT, msg: 'CubeSolver Backend is running', websocket: 'enabled', timestamp: new Date().toISOString() });
 });
 
 // Solver routes (public for demo, can be protected later)
@@ -39,7 +54,6 @@ app.use('/', solverRoutes);
 
 // Leaderboard global view (public, but user-specific requires auth)
 app.get('/leaderboard/global', async (req, res, next) => {
-    // Forward to leaderboard routes without auth
     next();
 });
 
@@ -70,6 +84,8 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+// Use server.listen instead of app.listen for Socket.IO
+server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`WebSocket server is ready`);
 });

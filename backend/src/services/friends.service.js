@@ -104,19 +104,28 @@ class FriendsService {
             throw new Error('Invalid request');
         }
 
-        // Transaction: Update request + Create bidirectional friendships
-        await prisma.$transaction([
-            prisma.friendRequest.update({
+        // Use sequential operations instead of transaction to avoid timeout
+        try {
+            await prisma.friendRequest.update({
                 where: { id: requestId },
                 data: { status: 'accepted' }
-            }),
-            prisma.friendship.create({
+            });
+
+            await prisma.friendship.create({
                 data: { userId: request.senderId, friendId: request.receiverId }
-            }),
-            prisma.friendship.create({
+            });
+
+            await prisma.friendship.create({
                 data: { userId: request.receiverId, friendId: request.senderId }
-            })
-        ]);
+            });
+        } catch (error) {
+            // If friendship already exists, just update the request status
+            if (error.code === 'P2002') {
+                console.warn('Friendship already exists, just updating request status');
+            } else {
+                throw error;
+            }
+        }
     }
 
     /**
@@ -220,14 +229,17 @@ class FriendsService {
      * Remove a friend
      */
     async removeFriend(userId, friendId) {
-        await prisma.$transaction([
-            prisma.friendship.delete({
+        try {
+            await prisma.friendship.delete({
                 where: { userId_friendId: { userId, friendId } }
-            }),
-            prisma.friendship.delete({
+            });
+        } catch (e) { /* ignore if not found */ }
+
+        try {
+            await prisma.friendship.delete({
                 where: { userId_friendId: { userId: friendId, friendId: userId } }
-            })
-        ]);
+            });
+        } catch (e) { /* ignore if not found */ }
     }
 }
 

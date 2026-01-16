@@ -1,28 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect';
 import {
     Heart, MessageCircle, Share2, Send, Image, Video, FileText,
     MoreHorizontal, Trophy, Users, UserPlus, MessageSquare, X,
-    Sparkles, TrendingUp
+    Sparkles, TrendingUp, Check, UserMinus, Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { postsApi, Post } from '@/api/posts.api';
-import { friendsApi, Friend } from '@/api/friends.api';
-import { messagesApi, Conversation, Message } from '@/api/messages.api';
+import { friendsApi, Friend, FriendRequest } from '@/api/friends.api';
 import { leaderboardApi } from '@/api/leaderboard.api';
 import { toast } from 'react-toastify';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 
 function ExplorePageContent() {
+    const router = useRouter();
+    const { user } = useAuth();
+    const { onlineUsers } = useSocket();
+
     const [posts, setPosts] = useState<Post[]>([]);
     const [friends, setFriends] = useState<Friend[]>([]);
+    const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
     const [recommendations, setRecommendations] = useState<Friend[]>([]);
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [userId, setUserId] = useState<string>('');
     const [userStats, setUserStats] = useState<{ rank: number; totalPlayers: number; bestSolve: number | null; percentile: number } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -31,18 +36,16 @@ function ExplorePageContent() {
     const [isPosting, setIsPosting] = useState(false);
     const [showComposer, setShowComposer] = useState(false);
 
-    // Chat
-    const [selectedChat, setSelectedChat] = useState<Friend | null>(null);
-    const [chatMessages, setChatMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState('');
+    // Friend request
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<Friend[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        const id = localStorage.getItem('cubex_user_id');
-        if (id) {
-            setUserId(id);
-            fetchData(id);
+        if (user?.id) {
+            fetchData(user.id);
         }
-    }, []);
+    }, [user?.id]);
 
     const fetchData = async (userId: string) => {
         setIsLoading(true);
@@ -57,17 +60,17 @@ function ExplorePageContent() {
                 setFriends(friendsData);
             } catch { setFriends([]); }
 
+            // Fetch pending requests (received)
+            try {
+                const requests = await friendsApi.getPendingRequests(userId);
+                setPendingRequests(requests);
+            } catch { setPendingRequests([]); }
+
             // Fetch recommendations
             try {
                 const recsData = await friendsApi.getRecommendations(userId);
                 setRecommendations(recsData);
             } catch { setRecommendations([]); }
-
-            // Fetch conversations
-            try {
-                const convData = await messagesApi.getConversations(userId);
-                setConversations(convData);
-            } catch { setConversations([]); }
 
             // Fetch user stats
             try {
@@ -88,11 +91,11 @@ function ExplorePageContent() {
     };
 
     const handleCreatePost = async () => {
-        if (!newPostContent.trim() || !userId) return;
+        if (!newPostContent.trim() || !user?.id) return;
 
         setIsPosting(true);
         try {
-            const newPost = await postsApi.createPost(userId, newPostContent);
+            const newPost = await postsApi.createPost(user.id, newPostContent);
             setPosts(prev => [newPost, ...prev]);
             setNewPostContent('');
             setShowComposer(false);
@@ -106,15 +109,16 @@ function ExplorePageContent() {
     };
 
     const handleLikePost = async (postId: string) => {
+        if (!user?.id) return;
         try {
-            const result = await postsApi.likePost(postId, userId);
+            const result = await postsApi.likePost(postId, user.id);
             setPosts(prev => prev.map(post => {
                 if (post.id === postId) {
                     return {
                         ...post,
                         likes: result.liked
-                            ? [...post.likes, { userId }]
-                            : post.likes.filter(l => l.userId !== userId),
+                            ? [...post.likes, { userId: user.id }]
+                            : post.likes.filter(l => l.userId !== user.id),
                         _count: {
                             ...post._count,
                             likes: result.liked ? post._count.likes + 1 : post._count.likes - 1
@@ -129,9 +133,11 @@ function ExplorePageContent() {
     };
 
     const handleSendFriendRequest = async (friendId: string) => {
+        if (!user?.id) return;
         try {
-            await friendsApi.sendFriendRequest(userId, friendId);
+            await friendsApi.sendFriendRequest(user.id, friendId);
             setRecommendations(prev => prev.filter(r => r.id !== friendId));
+            setSearchResults(prev => prev.filter(r => r.id !== friendId));
             toast.success('Friend request sent!');
         } catch (error) {
             console.error("Failed to send request:", error);
@@ -139,27 +145,56 @@ function ExplorePageContent() {
         }
     };
 
-    const handleSendMessage = async () => {
-        if (!newMessage.trim() || !selectedChat) return;
-
+    const handleAcceptRequest = async (requestId: string) => {
         try {
-            const msg = await messagesApi.sendMessage(userId, selectedChat.id, newMessage);
-            setChatMessages(prev => [...prev, msg]);
-            setNewMessage('');
+            await friendsApi.acceptFriendRequest(requestId);
+            const accepted = pendingRequests.find(r => r.id === requestId);
+            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+            if (accepted?.sender) {
+                setFriends(prev => [...prev, {
+                    id: accepted.sender!.id,
+                    username: accepted.sender!.username,
+                    avatar: accepted.sender!.avatar,
+                    bestSolve: null,
+                    totalSolves: 0
+                }]);
+            }
+            toast.success('Friend request accepted!');
         } catch (error) {
-            console.error("Failed to send message:", error);
+            console.error("Failed to accept request:", error);
+            toast.error('Failed to accept request');
         }
     };
 
-    const openChat = async (friend: Friend) => {
-        setSelectedChat(friend);
+    const handleRejectRequest = async (requestId: string) => {
         try {
-            const messages = await messagesApi.getConversation(userId, friend.id);
-            setChatMessages(messages);
-            await messagesApi.markAsRead(friend.id, userId);
-        } catch {
-            setChatMessages([]);
+            await friendsApi.rejectFriendRequest(requestId);
+            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+            toast.success('Request rejected');
+        } catch (error) {
+            console.error("Failed to reject request:", error);
         }
+    };
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim() || !user?.id) return;
+        setIsSearching(true);
+        try {
+            const results = await friendsApi.getRecommendations(user.id);
+            // Filter by search query
+            const filtered = results.filter(u =>
+                u.username.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setSearchResults(filtered);
+        } catch (error) {
+            setSearchResults([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const openChat = (friendId: string) => {
+        router.push(`/chat?userId=${friendId}`);
     };
 
     const formatTime = (ms: number) => {
@@ -179,6 +214,8 @@ function ExplorePageContent() {
         return `${Math.floor(seconds / 86400)}d`;
     };
 
+    const isOnline = (userId: string) => onlineUsers.includes(userId);
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-blue-500/30">
             <Navbar />
@@ -191,57 +228,127 @@ function ExplorePageContent() {
             <main className="relative z-10 container mx-auto py-24 px-4">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto">
 
-                    {/* Left Sidebar - Profile */}
+                    {/* Left Sidebar - Friend Requests & Send Request */}
                     <aside className="lg:col-span-3 space-y-4">
-                        {/* Profile Card */}
-                        <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                            {/* Banner */}
-                            <div className="h-16 bg-gradient-to-r from-blue-600 to-purple-600" />
+                        {/* Send Friend Request */}
+                        <div className="bg-[#111] border border-white/5 rounded-2xl p-4">
+                            <h3 className="font-bold text-sm flex items-center gap-2 mb-3">
+                                <UserPlus size={16} className="text-blue-400" />
+                                Add Friends
+                            </h3>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Search username..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    className="flex-1 px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-sm text-white placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none"
+                                />
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={isSearching}
+                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                                >
+                                    <Search size={16} />
+                                </button>
+                            </div>
 
-                            {/* Avatar & Info */}
-                            <div className="px-4 pb-4 -mt-8">
-                                <div className="w-16 h-16 rounded-full bg-[#222] border-4 border-[#111] flex items-center justify-center text-2xl font-bold text-blue-400 mb-2">
-                                    {userId ? userId[0].toUpperCase() : 'U'}
+                            {/* Search Results */}
+                            {searchResults.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                    {searchResults.map(result => (
+                                        <div key={result.id} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold">
+                                                {result.username[0].toUpperCase()}
+                                            </div>
+                                            <span className="flex-1 text-sm truncate">{result.username}</span>
+                                            <button
+                                                onClick={() => handleSendFriendRequest(result.id)}
+                                                className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded-full"
+                                            >
+                                                <UserPlus size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
-                                <h3 className="font-bold text-lg">Cuber</h3>
-                                <p className="text-sm text-neutral-500">Speedcubing enthusiast</p>
+                            )}
+                        </div>
 
-                                {userStats && (
-                                    <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 gap-3 text-center text-xs">
-                                        <div>
-                                            <div className="text-neutral-500">Rank</div>
-                                            <div className="font-bold text-white">#{userStats.rank || '-'}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-neutral-500">Top %</div>
-                                            <div className="font-bold text-green-400">{userStats.percentile || '-'}%</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-neutral-500">Best</div>
-                                            <div className="font-mono font-bold text-blue-400">
-                                                {userStats.bestSolve ? formatTime(userStats.bestSolve) : '-'}
+                        {/* Pending Friend Requests */}
+                        <div className="bg-[#111] border border-white/5 rounded-2xl p-4">
+                            <h3 className="font-bold text-sm flex items-center gap-2 mb-3">
+                                <Users size={16} className="text-orange-400" />
+                                Friend Requests
+                                {pendingRequests.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded-full text-xs">
+                                        {pendingRequests.length}
+                                    </span>
+                                )}
+                            </h3>
+
+                            {pendingRequests.length === 0 ? (
+                                <p className="text-neutral-500 text-sm">No pending requests</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {pendingRequests.map(request => (
+                                        <div key={request.id} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-sm font-bold">
+                                                {request.sender?.username[0].toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{request.sender?.username}</p>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => handleAcceptRequest(request.id)}
+                                                    className="p-1.5 bg-green-600 hover:bg-green-500 rounded-full"
+                                                >
+                                                    <Check size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectRequest(request.id)}
+                                                    className="p-1.5 bg-red-600 hover:bg-red-500 rounded-full"
+                                                >
+                                                    <X size={14} />
+                                                </button>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div className="text-neutral-500">Friends</div>
-                                            <div className="font-bold text-white">{friends.length}</div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Quick Stats */}
-                        <div className="bg-[#111] border border-white/5 rounded-2xl p-4 space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-neutral-400">Profile viewers</span>
-                                <span className="text-blue-400 font-bold">{Math.floor(Math.random() * 100) + 10}</span>
+                        {/* Suggestions */}
+                        {recommendations.length > 0 && (
+                            <div className="bg-[#111] border border-white/5 rounded-2xl p-4">
+                                <h3 className="font-bold text-sm flex items-center gap-2 mb-3">
+                                    <Sparkles size={16} className="text-purple-400" />
+                                    Suggestions
+                                </h3>
+                                <div className="space-y-2">
+                                    {recommendations.slice(0, 5).map(rec => (
+                                        <div key={rec.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-sm font-bold">
+                                                {rec.username[0].toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{rec.username}</p>
+                                                {rec.bestSolve && (
+                                                    <p className="text-xs text-neutral-500">Best: {formatTime(rec.bestSolve)}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleSendFriendRequest(rec.id)}
+                                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-full"
+                                            >
+                                                <UserPlus size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-neutral-400">Post impressions</span>
-                                <span className="text-blue-400 font-bold">{Math.floor(Math.random() * 500) + 50}</span>
-                            </div>
-                        </div>
+                        )}
                     </aside>
 
                     {/* Main Feed */}
@@ -252,28 +359,12 @@ function ExplorePageContent() {
                                 className="flex items-center gap-4 cursor-pointer"
                                 onClick={() => setShowComposer(true)}
                             >
-                                <div className="w-12 h-12 rounded-full bg-[#222] flex items-center justify-center text-blue-400 font-bold">
-                                    {userId ? userId[0].toUpperCase() : 'U'}
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-lg font-bold">
+                                    {user?.username?.[0]?.toUpperCase() || 'U'}
                                 </div>
                                 <div className="flex-1 bg-[#1a1a1a] hover:bg-[#222] border border-white/10 rounded-full px-5 py-3 text-neutral-400 text-sm transition-colors">
                                     Share your thoughts...
                                 </div>
-                            </div>
-
-                            {/* Post Type Buttons */}
-                            <div className="flex items-center justify-around mt-4 pt-3 border-t border-white/5">
-                                <button className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                    <Video size={20} className="text-green-500" />
-                                    Video
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                    <Image size={20} className="text-blue-500" />
-                                    Photo
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                    <FileText size={20} className="text-orange-500" />
-                                    Article
-                                </button>
                             </div>
                         </div>
 
@@ -305,16 +396,6 @@ function ExplorePageContent() {
                                         </div>
 
                                         <div className="p-4">
-                                            <div className="flex items-start gap-3 mb-4">
-                                                <div className="w-12 h-12 rounded-full bg-[#222] flex items-center justify-center text-blue-400 font-bold">
-                                                    {userId ? userId[0].toUpperCase() : 'U'}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium">Cuber</div>
-                                                    <div className="text-xs text-neutral-500">Post to Everyone</div>
-                                                </div>
-                                            </div>
-
                                             <textarea
                                                 value={newPostContent}
                                                 onChange={(e) => setNewPostContent(e.target.value)}
@@ -322,18 +403,6 @@ function ExplorePageContent() {
                                                 className="w-full bg-transparent border-none outline-none resize-none text-white placeholder-neutral-500 text-lg min-h-[150px]"
                                                 autoFocus
                                             />
-
-                                            <div className="flex items-center gap-4 pt-4 border-t border-white/5">
-                                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                                    <Image size={20} className="text-blue-400" />
-                                                </button>
-                                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                                    <Video size={20} className="text-green-400" />
-                                                </button>
-                                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                                    <Sparkles size={20} className="text-purple-400" />
-                                                </button>
-                                            </div>
                                         </div>
 
                                         <div className="p-4 border-t border-white/5">
@@ -354,12 +423,6 @@ function ExplorePageContent() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
-                        {/* Feed Sort */}
-                        <div className="flex items-center justify-between text-sm px-2">
-                            <div className="h-px flex-1 bg-white/10" />
-                            <span className="px-4 text-neutral-500">Sort by: <span className="text-white">Top</span></span>
-                        </div>
 
                         {/* Posts */}
                         {isLoading ? (
@@ -384,12 +447,8 @@ function ExplorePageContent() {
                                     {/* Post Header */}
                                     <div className="flex items-start justify-between p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-full bg-[#222] flex items-center justify-center text-lg font-bold text-blue-400">
-                                                {post.user.avatar ? (
-                                                    <img src={post.user.avatar} alt="" className="w-full h-full rounded-full" />
-                                                ) : (
-                                                    post.user.username[0].toUpperCase()
-                                                )}
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-lg font-bold">
+                                                {post.user.username[0].toUpperCase()}
                                             </div>
                                             <div>
                                                 <div className="font-medium">{post.user.username}</div>
@@ -407,9 +466,6 @@ function ExplorePageContent() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                            <MoreHorizontal size={20} className="text-neutral-400" />
-                                        </button>
                                     </div>
 
                                     {/* Post Content */}
@@ -429,12 +485,12 @@ function ExplorePageContent() {
                                             onClick={() => handleLikePost(post.id)}
                                             className={cn(
                                                 "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
-                                                post.likes.some(l => l.userId === userId)
+                                                post.likes.some(l => l.userId === user?.id)
                                                     ? "text-red-400"
                                                     : "text-neutral-400 hover:text-white hover:bg-white/5"
                                             )}
                                         >
-                                            <Heart size={18} fill={post.likes.some(l => l.userId === userId) ? "currentColor" : "none"} />
+                                            <Heart size={18} fill={post.likes.some(l => l.userId === user?.id) ? "currentColor" : "none"} />
                                             Like
                                         </button>
                                         <button className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
@@ -451,54 +507,21 @@ function ExplorePageContent() {
                         )}
                     </div>
 
-                    {/* Right Sidebar - Friends & Chat */}
+                    {/* Right Sidebar - Friends & Messages */}
                     <aside className="lg:col-span-3 space-y-4">
-                        {/* Friend Recommendations */}
-                        {recommendations.length > 0 && (
-                            <div className="bg-[#111] border border-white/5 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-bold text-sm flex items-center gap-2">
-                                        <UserPlus size={16} className="text-blue-400" />
-                                        Add Friends
-                                    </h3>
-                                </div>
-                                <div className="space-y-3">
-                                    {recommendations.slice(0, 3).map((rec) => (
-                                        <div key={rec.id} className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-[#222] flex items-center justify-center text-sm font-bold text-blue-400">
-                                                {rec.avatar ? (
-                                                    <img src={rec.avatar} alt="" className="w-full h-full rounded-full" />
-                                                ) : (
-                                                    rec.username[0].toUpperCase()
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-sm truncate">{rec.username}</div>
-                                                {rec.bestSolve && (
-                                                    <div className="text-xs text-neutral-500">
-                                                        Best: {formatTime(rec.bestSolve)}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => handleSendFriendRequest(rec.id)}
-                                                className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-full transition-colors"
-                                            >
-                                                <UserPlus size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
                         {/* Friends / Messages */}
                         <div className="bg-[#111] border border-white/5 rounded-2xl p-4">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-sm flex items-center gap-2">
                                     <MessageSquare size={16} className="text-green-400" />
-                                    Messaging
+                                    Messages
                                 </h3>
+                                <button
+                                    onClick={() => router.push('/chat')}
+                                    className="text-xs text-blue-400 hover:text-blue-300"
+                                >
+                                    See all
+                                </button>
                             </div>
 
                             {friends.length === 0 ? (
@@ -511,19 +534,22 @@ function ExplorePageContent() {
                                     {friends.slice(0, 5).map((friend) => (
                                         <button
                                             key={friend.id}
-                                            onClick={() => openChat(friend)}
+                                            onClick={() => openChat(friend.id)}
                                             className="w-full flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors text-left"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-[#222] flex items-center justify-center text-sm font-bold text-blue-400">
-                                                {friend.avatar ? (
-                                                    <img src={friend.avatar} alt="" className="w-full h-full rounded-full" />
-                                                ) : (
-                                                    friend.username[0].toUpperCase()
+                                            <div className="relative">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-sm font-bold">
+                                                    {friend.username[0].toUpperCase()}
+                                                </div>
+                                                {isOnline(friend.id) && (
+                                                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#111]" />
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-medium text-sm truncate">{friend.username}</div>
-                                                <div className="text-xs text-neutral-500">Click to chat</div>
+                                                <div className="text-xs text-neutral-500">
+                                                    {isOnline(friend.id) ? 'Online' : 'Offline'}
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
@@ -552,76 +578,6 @@ function ExplorePageContent() {
 
                 </div>
             </main>
-
-            {/* Chat Modal */}
-            <AnimatePresence>
-                {selectedChat && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 100 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-4 right-4 w-80 bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
-                    >
-                        {/* Chat Header */}
-                        <div className="flex items-center justify-between p-3 border-b border-white/5 bg-[#0a0a0a]">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-[#222] flex items-center justify-center text-xs font-bold text-blue-400">
-                                    {selectedChat.username[0].toUpperCase()}
-                                </div>
-                                <span className="font-medium text-sm">{selectedChat.username}</span>
-                            </div>
-                            <button
-                                onClick={() => setSelectedChat(null)}
-                                className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {/* Chat Messages */}
-                        <div className="h-64 overflow-y-auto p-3 space-y-2">
-                            {chatMessages.length === 0 ? (
-                                <div className="text-center text-neutral-500 text-sm py-8">
-                                    Start a conversation!
-                                </div>
-                            ) : (
-                                chatMessages.map((msg) => (
-                                    <div
-                                        key={msg.id}
-                                        className={cn(
-                                            "max-w-[80%] p-2 rounded-xl text-sm",
-                                            msg.senderId === userId
-                                                ? "ml-auto bg-blue-500 text-white"
-                                                : "bg-white/10 text-white"
-                                        )}
-                                    >
-                                        {msg.content}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        {/* Chat Input */}
-                        <div className="p-3 border-t border-white/5 flex items-center gap-2">
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                placeholder="Type a message..."
-                                className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-full px-4 py-2 text-sm outline-none focus:border-blue-500/50"
-                            />
-                            <button
-                                onClick={handleSendMessage}
-                                disabled={!newMessage.trim()}
-                                className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-white/10 rounded-full transition-colors"
-                            >
-                                <Send size={16} />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }

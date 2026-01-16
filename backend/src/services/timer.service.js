@@ -1,5 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+    transactionOptions: {
+        maxWait: 10000,  // 10 seconds max wait to start transaction
+        timeout: 20000,  // 20 seconds transaction timeout
+    }
+});
 
 class TimerService {
     /**
@@ -13,7 +18,20 @@ class TimerService {
             throw new Error('Time is required');
         }
 
-        // 2. Transaction to ensure stats are synced
+        try {
+            // Try transaction first
+            return await this._createWithTransaction(userId, data);
+        } catch (error) {
+            // If transaction fails (P2028), use non-transactional approach
+            if (error.code === 'P2028') {
+                console.warn('Transaction failed, using non-transactional approach');
+                return await this._createWithoutTransaction(userId, data);
+            }
+            throw error;
+        }
+    }
+
+    async _createWithTransaction(userId, data) {
         return await prisma.$transaction(async (tx) => {
             // Check if user exists, create if not (for demo/guest mode)
             let user = await tx.user.findUnique({ where: { id: userId } });
@@ -25,7 +43,7 @@ class TimerService {
                         id: userId,
                         username: `Guest_${randomSuffix}`,
                         email: `guest_${randomSuffix}@example.com`,
-                        password: 'guest_password_placeholder', // Should be hashed in real app
+                        password: 'guest_password_placeholder',
                     }
                 });
             }
@@ -54,7 +72,50 @@ class TimerService {
             });
 
             return timerRecord;
+        }, {
+            maxWait: 10000,
+            timeout: 20000,
         });
+    }
+
+    async _createWithoutTransaction(userId, data) {
+        // Check if user exists, create if not
+        let user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            const randomSuffix = Math.random().toString(36).substr(2, 6);
+            user = await prisma.user.create({
+                data: {
+                    id: userId,
+                    username: `Guest_${randomSuffix}`,
+                    email: `guest_${randomSuffix}@example.com`,
+                    password: 'guest_password_placeholder',
+                }
+            });
+        }
+
+        // Create TimerRecord
+        const timerRecord = await prisma.timerRecord.create({
+            data: {
+                userId,
+                time: data.time
+            }
+        });
+
+        // Update User Stats
+        const updates = {
+            totalSolves: { increment: 1 }
+        };
+
+        if (!user.bestSolve || data.time < user.bestSolve) {
+            updates.bestSolve = data.time;
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: updates
+        });
+
+        return timerRecord;
     }
 
     async getUserTimerRecords(userId, limit = 50, offset = 0) {
