@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, ReactNode, useCallback } fr
 import { CubeState, FaceKey } from '@/components/solver/CubeNet';
 import { Phase, cubeApi } from '@/api/cube.api';
 import { CubeColor } from '@/components/solver/ColorPicker';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 interface CubeContextType {
     cubeState: CubeState;
@@ -93,7 +93,7 @@ export function CubeProvider({ children }: { children: ReactNode }) {
             setCubeState(data.stickers);
             setError(null);
             setSolutionPhases([]);
-            toast.info("Cube Scrambled!");
+            toast("Cube Scrambled!");
         } catch (err: any) {
             toast.error("Scramble failed");
         } finally {

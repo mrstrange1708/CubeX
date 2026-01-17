@@ -15,6 +15,7 @@ const leaderboardRoutes = require('./src/routes/leaderboard.routes');
 const friendsRoutes = require('./src/routes/friends.routes');
 const postsRoutes = require('./src/routes/posts.routes');
 const messagesRoutes = require('./src/routes/messages.routes');
+const userRoutes = require('./src/routes/user.routes');
 
 // Import Middleware
 const { authMiddleware, optionalAuthMiddleware } = require('./src/middleware/auth.middleware');
@@ -75,6 +76,9 @@ app.use('/posts', authMiddleware, postsRoutes);
 
 // Messages routes - require auth
 app.use('/messages', authMiddleware, messagesRoutes);
+
+// User routes - require auth
+app.use('/users', authMiddleware, userRoutes);
 
 // ============================================
 // Error Handler

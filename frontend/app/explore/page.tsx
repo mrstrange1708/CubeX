@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { postsApi, Post } from '@/api/posts.api';
 import { friendsApi, Friend, FriendRequest } from '@/api/friends.api';
 import { leaderboardApi } from '@/api/leaderboard.api';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
@@ -446,12 +446,15 @@ function ExplorePageContent() {
                                 >
                                     {/* Post Header */}
                                     <div className="flex items-start justify-between p-4">
-                                        <div className="flex items-center gap-3">
+                                        <div
+                                            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                            onClick={() => router.push(`/profile/${post.user.id}`)}
+                                        >
                                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-lg font-bold">
                                                 {post.user.username[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className="font-medium">{post.user.username}</div>
+                                                <div className="font-medium hover:text-blue-400 transition-colors">{post.user.username}</div>
                                                 <div className="text-xs text-neutral-500 flex items-center gap-2">
                                                     {timeAgo(post.createdAt)}
                                                     {post.user.bestSolve && (

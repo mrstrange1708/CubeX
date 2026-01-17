@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,7 @@ export default function SignupPage() {
                 password: formData.password,
                 confirmPassword: formData.confirmPassword
             });
-            toast.success("Account created successfully!");
+            toast.success("Account created! Redirecting to login...");
             setTimeout(() => router.push("/auth/signin"), 1500);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Something went wrong.");
@@ -99,6 +99,15 @@ export default function SignupPage() {
                 {/* Grid Pattern */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#111_1px,transparent_1px),linear-gradient(to_bottom,#111_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
             </div>
+
+            {/* Back Button */}
+            <button
+                onClick={() => router.push('/')}
+                className="absolute top-6 left-6 flex items-center gap-2 px-3 py-2 text-sm text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all z-20"
+            >
+                <ArrowLeft size={16} />
+                Back
+            </button>
 
             {/* Main Content */}
             <div className="relative z-10 w-full max-w-sm px-4">

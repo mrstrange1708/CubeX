@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Timer from "@/components/timer/Timer";
 import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
 import { History, Trash2, Trophy, TrendingUp } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { timerApi } from "@/api/timer.api";
 import { leaderboardApi } from "@/api/leaderboard.api";
@@ -66,7 +66,7 @@ function TimerPageContent() {
             if (userId) {
                 try {
                     await timerApi.saveTimerRecord({ userId, time: Math.round(time) });
-                    toast.success("Time saved!", { autoClose: 2000 });
+                    toast.success("Time saved!");
                 } catch (saveErr) {
                     console.error("Save failed:", saveErr);
                     toast.error("Failed to save record to database");
